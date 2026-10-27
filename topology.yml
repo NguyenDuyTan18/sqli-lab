@@ -1,13 +1,26 @@
-name: sqli-training-lab
+name: sqli-single-sandbox-four-teams
 
-# Replace image/flavor names with existing CyberRange-compatible OpenStack values.
 hosts:
-  - name: sqli-web
+  - name: attacker1
     base_box:
       image: ubuntu-22.04
       mgmt_user: ubuntu
     flavor: standard.small
-
+  - name: attacker2
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
+  - name: attacker3
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
+  - name: attacker4
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
   - name: checker
     base_box:
       image: ubuntu-22.04
@@ -32,9 +45,18 @@ networks:
     hidden: true
 
 net_mappings:
-  - host: sqli-web
+  - host: attacker1
     network: service-net
-    ip: 10.20.10.10
+    ip: 10.20.10.11
+  - host: attacker2
+    network: service-net
+    ip: 10.20.10.12
+  - host: attacker3
+    network: service-net
+    ip: 10.20.10.13
+  - host: attacker4
+    network: service-net
+    ip: 10.20.10.14
   - host: checker
     network: checker-net
     ip: 10.20.20.10
@@ -46,3 +68,11 @@ router_mappings:
   - router: lab-router
     network: checker-net
     ip: 10.20.20.1
+
+groups:
+  - name: attackers
+    nodes:
+      - attacker1
+      - attacker2
+      - attacker3
+      - attacker4

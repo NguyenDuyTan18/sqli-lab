@@ -15,7 +15,9 @@ subnets = list(networks.values()) + [ipaddress.ip_network('100.100.100.0/24')]
 assert all(not a.overlaps(b) for index, a in enumerate(subnets) for b in subnets[index + 1:])
 for mapping in topology['net_mappings'] + topology['router_mappings']:
     assert ipaddress.ip_address(mapping['ip']) in networks[mapping['network']]
-assert {host['name'] for host in topology['hosts']} == {'sqli-web', 'checker'}
+team_nodes = {'attacker1', 'attacker2', 'attacker3', 'attacker4'}
+assert {host['name'] for host in topology['hosts']} == team_nodes | {'checker'}
+assert next(group['nodes'] for group in topology['groups'] if group['name'] == 'attackers') == sorted(team_nodes)
 
 for path in ROOT.rglob('*.yml'):
     yaml.safe_load(path.read_text(encoding='utf-8'))
@@ -25,11 +27,13 @@ environment = jinja2.Environment(loader=jinja2.FileSystemLoader(ROOT / 'provisio
                                undefined=jinja2.StrictUndefined, trim_blocks=True)
 environment.filters['bool'] = bool
 environment.filters['to_nice_json'] = lambda value: json.dumps(value, indent=2)
-variables = {'sqli_checker_targets': {'sqli-web': '10.20.10.10:8080'},
+variables = {'sqli_checker_targets': {
+                 'attacker1': '10.20.10.11:8080', 'attacker2': '10.20.10.12:8080',
+                 'attacker3': '10.20.10.13:8080', 'attacker4': '10.20.10.14:8080'},
              'sqli_checker_keep': 5, 'sqli_search_fixed': False}
 for fixed in (False, True):
     rendered = environment.get_template('sqli-web.service.j2').render(
-        **{**variables, 'sqli_target': '10.20.10.10:8080', 'sqli_search_fixed': fixed})
+        **{**variables, 'sqli_target': '10.20.10.11:8080', 'sqli_search_fixed': fixed})
     lines = rendered.splitlines()
     exec_line = next(line for line in lines if line.startswith('ExecStart='))
     assert 'Restart=' not in exec_line, 'Jinja whitespace merged systemd directives'
@@ -38,4 +42,8 @@ for fixed in (False, True):
 
 target_config = environment.get_template('checker-targets.json.j2').render(**variables)
 assert yaml.safe_load(target_config) == {'targets': variables['sqli_checker_targets'], 'keep': 5}
-print('Topology invariants, YAML parsing, service template and checker target config: OK')
+training = json.loads((ROOT / 'training-definition.json').read_text(encoding='utf-8'))
+assert training['state'] == 'UNRELEASED' and len(training['levels']) == 1
+requirements = yaml.safe_load((ROOT / 'provisioning/requirements.yml').read_text(encoding='utf-8'))
+assert requirements['roles'] and requirements['collections']
+print('Topology, training definition, Ansible requirements and templates: OK')

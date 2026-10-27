@@ -77,7 +77,7 @@ kết quả qua stdout SSH. Controller ghi log ở
 Chỉ kiểm tra health/search hoặc chọn service IDs:
 
 ```powershell
-.\external\start-checker.ps1 -SshConfig $config -Action check -Targets team-a,team-b
+.\external\start-checker.ps1 -SshConfig $config -Action check -Targets attacker1,attacker2
 ```
 
 Mỗi service ID phải có trong `sqli_checker_targets`; controller không gửi địa chỉ
@@ -88,11 +88,12 @@ WSL, chạy controller trong cùng môi trường SSH có management config.
 Muốn mở web thủ công để xem bài, dùng tunnel riêng trong một terminal:
 
 ```powershell
-ssh -F $config -N -T -L 127.0.0.1:18080:10.20.10.10:8080 checker
+ssh -F $config -N -T -L 127.0.0.1:18080:127.0.0.1:8080 attacker1
 ```
 
-Sau đó truy cập `http://127.0.0.1:18080/`. Tunnel này phục vụ trình duyệt,
-không tham gia chu kỳ checker.
+Sau đó truy cập `http://127.0.0.1:18080/`. Đổi alias `attacker1` sang alias
+của máy đội được cấp. Tunnel này phục vụ trình duyệt, không tham gia chu kỳ
+checker.
 
 Nếu lệnh không chạy được, kiểm tra đường dẫn config, alias `checker`, quyền sudo
 command giới hạn và log dịch vụ web (`journalctl -u sqli-web`) trên máy lab.

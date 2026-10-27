@@ -1,0 +1,27 @@
+{
+  "title": "SQL Injection Lab — Four Teams, One Sandbox",
+  "description": "A single CyberRangeCZ sandbox with four independent SQL injection training services and one internal checker.",
+  "prerequisites": ["Basic HTTP", "Basic SQL SELECT queries"],
+  "outcomes": [
+    "Access the SQLi service assigned to your team",
+    "Reproduce a UNION-based SQL injection",
+    "Fix the vulnerable query with parameterized SQL",
+    "Keep normal service behavior and checker integrity working"
+  ],
+  "state": "UNRELEASED",
+  "show_stepper_bar": false,
+  "estimated_duration": 45,
+  "variant_sandboxes": false,
+  "levels": [
+    {
+      "title": "Four-team SQLi sandbox",
+      "level_type": "ACCESS_LEVEL",
+      "order": 0,
+      "estimated_duration": 45,
+      "minimal_possible_solve_time": null,
+      "passkey": "finish-sqli-lab",
+      "cloud_content": "# Range Shop SQL injection lab\n\nThis Training Instance contains four independent team services in one sandbox. Open the service assigned by your instructor:\n\n- attacker1: http://10.20.10.11:8080/\n- attacker2: http://10.20.10.12:8080/\n- attacker3: http://10.20.10.13:8080/\n- attacker4: http://10.20.10.14:8080/\n\nEach service has its own database. Use the platform-issued SSH key and the `user-access` account to inspect and patch your assigned VM. The internal checker checks each team service independently. Complete the exercise and submit `finish-sqli-lab` when instructed by your instructor.",
+      "local_content": "This lab runs as one CyberRangeCZ sandbox with four team services and an internal checker. Open the assigned Training Instance."
+    }
+  ]
+}

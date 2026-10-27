@@ -5,7 +5,8 @@ CyberRangeCZ đọc Git repository, dùng topology và Ansible provisioning đ�
 máy trên OpenStack. OpenStack không tự đọc GitHub repository này.
 
 Đưa **nội dung của thư mục `cyberrange-sqli-lab` vào gốc repo mới**:
-`topology.yml` phải nằm ngay ở root Git repository, không nằm trong thư mục con.
+`topology.yml`, `training-definition.json` và `provisioning/` phải nằm ngay dưới
+root Git repository, không nằm trong thư mục con.
 
 ## Mô hình
 
@@ -21,9 +22,9 @@ Windows của bạn
                             team/service targets trong cùng sandbox
 ```
 
-Topology mẫu có 2 máy chức năng (`sqli-web`, `checker`) và 1 router (`lab-router`).
-Khi một sandbox chứa dịch vụ của nhiều đội, thêm các máy/network cần thiết vào
-topology và khai báo mỗi endpoint checker cần theo dõi.
+Topology mẫu có bốn máy đội (`attacker1`–`attacker4`), VM `checker` và router
+`lab-router`, cùng trong một sandbox/pool size 1. Mỗi máy đội chạy một bản SQLi
+riêng với database riêng. Khi số đội thay đổi, cập nhật topology và target map.
 Controller bên ngoài giữ chu kỳ và dùng SSH gọi checker VM. VM truy cập các dịch vụ
 trong sandbox, giữ state riêng theo service ID, rồi trả trạng thái JSON qua SSH.
 Mỗi service ID tạo tài khoản và flag riêng. Chỉ một controller nên điều phối
@@ -41,29 +42,33 @@ một sandbox tại một thời điểm.
 
 Trong `topology.yml`, image đã đặt là `ubuntu-22.04`, có trong danh sách Images
 bạn cung cấp. Xác nhận `mgmt_user: ubuntu` đúng với image đó và thay `flavor:
-standard.small` bằng flavor tồn tại trên OpenStack của bạn. Cả ba image phải có
+standard.small` bằng flavor tồn tại trên OpenStack của bạn. Tất cả image phải có
 cloud-init, SSH và sudo; router cũng phải tương thích preconfig của hệ thống.
 Cần truy cập APT hoặc mirror nội bộ khi provisioning cài Python.
 
-Mạng mặc định: `10.20.10.0/24` và `10.20.20.0/24`. Nếu đổi, sửa topology và
-cập nhật `sqli_checker_targets` trong `provisioning/group_vars/all.yml` cho mọi
-service của các đội. Mỗi giá trị là `HOST:PORT` mà VM checker truy cập được.
-Ví dụ với hai đội:
+Mạng mặc định: `10.20.10.0/24` và `10.20.20.0/24`. Nếu đổi, sửa topology,
+`sqli_checker_targets` trong `provisioning/group_vars/all.yml`, và các URL trong
+`training-definition.json`. Mỗi target là `HOST:PORT` mà VM checker truy cập được.
+Ví dụ:
 
 ```yaml
 sqli_checker_targets:
-  team-a: "10.20.10.11:8080"
-  team-b: "10.20.10.12:8080"
+  attacker1: "10.20.10.11:8080"
+  attacker2: "10.20.10.12:8080"
+  attacker3: "10.20.10.13:8080"
+  attacker4: "10.20.10.14:8080"
 ```
 
-Topology mẫu tự lấy IP `sqli-web` từ inventory. Chọn dải không trùng mạng
+Topology mẫu tự lấy IP từng máy từ inventory. Chọn dải không trùng mạng
 management/WAN/mạng hiện có. `hidden` chỉ ẩn hiển thị, không phải ACL.
 
 Tạo repo GitHub mới rồi upload nội dung thư mục này. Giữ đúng cấu trúc:
 
 ```text
 topology.yml
+training-definition.json
 provisioning/
+  requirements.yml
   playbook.yml
   group_vars/all.yml
   files/app.py
@@ -82,14 +87,18 @@ Không upload `ssh-access.zip`, SSH private key hoặc `runtime/`.
 Repo có `.gitignore` cho các dữ liệu này. Repo private cần cấu hình quyền clone
 cho CyberRange; không đặt GitHub token vào Git URL.
 
-## 2. Tạo sandbox
+`requirements.yml` cài role `user-access` và collection cần cho provisioning.
+Không sao chép mật khẩu lab trong repo IDOR; tài khoản học viên dùng SSH public
+key do CyberRange cung cấp, còn password runtime được tạo ngẫu nhiên.
 
-1. CyberRange portal -> **Sandbox Definitions -> Create**.
-2. Git URL: `https://github.com/<owner>/<repo>.git`.
-3. Revision: branch thực tế, ví dụ `main`; sau khi chạy được nên chọn commit cụ thể.
-4. Tạo Pool dùng definition này; cấp phát sandbox và chờ provisioning hoàn tất.
-5. Kiểm tra có `sqli-web`, `checker`, `lab-router` trong topology.
-6. Vào Pool, tải gói **SSH management access** dành cho instructor.
+## 2. Tạo sandbox và Training Instance
+
+1. Tạo Sandbox Definition từ Git root này và chọn revision thực tế.
+2. Tạo Pool size **1**, cấp phát sandbox và chờ provisioning hoàn tất.
+3. Import `training-definition.json`, review/release, tạo Training Instance và
+   gán Pool vào instance.
+4. Kiểm tra có `attacker1`–`attacker4`, `checker` và `lab-router` trong topology.
+5. Tải gói **SSH management access** dành cho instructor.
 
 Không dùng file SSH user access để quản lý máy checker. Checker VM không tự lập
 lịch: controller ngoài gọi nó theo chu kỳ. Controller gửi action và service ID;
@@ -147,10 +156,10 @@ Script dùng `ssh.exe` của Windows:
 Chạy chỉ health/search, không tạo flag mới:
 
 ```powershell
-.\external\start-checker.ps1 -SshConfig "$env:USERPROFILE\.ssh\pool-id-<POOL>-sandbox-id-<SANDBOX>-management-config" -Action check -Targets sqli-web
+.\external\start-checker.ps1 -SshConfig "$env:USERPROFILE\.ssh\pool-id-<POOL>-sandbox-id-<SANDBOX>-management-config" -Action check -Targets attacker1,attacker2
 ```
 
-Chọn một số đội/service ID bằng `-Targets team-a,team-b`; bỏ tùy chọn này để
+Chọn một số đội/service ID bằng `-Targets attacker1,attacker2`; bỏ tùy chọn này để
 chạy tất cả ID đã cấu hình. `-Action round` kiểm tra health/search, xác minh các
 flag cũ, tạo flag mới rồi đọc lại để xác nhận. `-Action check` chỉ kiểm tra
 health/search. `-Once` chạy đúng một lượt. Không cần HTTP tunnel hay mở cổng vào
@@ -193,8 +202,8 @@ Chạy kiểm thử:
 py -m unittest discover -s tests -v
 ```
 
-Trên Linux thay `py` bằng `python3`. Xem kết quả đã kiểm tra và các phần cần
-xác nhận trên OpenStack thật trong [docs/VALIDATION.md](docs/VALIDATION.md).
+Trên Linux thay `py` bằng `python3`. Hướng dẫn management SSH trên Windows nằm
+trong [docs/SSH-WINDOWS.md](docs/SSH-WINDOWS.md).
 
 ## Tài liệu định dạng chính thức
 

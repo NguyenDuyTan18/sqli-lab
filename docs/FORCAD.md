@@ -27,7 +27,7 @@ Không gọi reset/clean trên game đang chạy.
 
 ## Truy cập từ Docker
 
-IP `10.20.10.10` chỉ dùng được khi worker container có route đến sandbox.
+Các IP `10.20.10.11`–`10.20.10.14` chỉ dùng được khi worker container có route đến sandbox.
 SSH tunnel bind localhost Windows không tự xuất hiện trong container ForcAD.
 Controller bên ngoài dùng SSH để kích hoạt checker trong sandbox và lưu JSON
 kết quả ở máy điều khiển; luồng này độc lập với việc ForcAD ghi điểm.
@@ -38,7 +38,8 @@ Nếu muốn chính ForcAD chấm qua SSH management:
 2. Cho worker truy cập endpoint tunnel thông qua mạng riêng được kiểm soát.
 3. Đặt `teams[].ip` thành `host:port` mà worker truy cập được; checker này hỗ trợ
    `HOST:PORT`. Kiểm tra model cấu hình ForcAD của phiên bản bạn đang chạy.
-4. Với nhiều sandbox có cùng IP nội bộ, dùng tunnel/port và state riêng cho mỗi team.
+4. Mỗi team dùng IP service riêng (`attacker1`–`attacker4`); với nhiều sandbox có
+   cùng IP nội bộ, dùng tunnel/port và state riêng cho mỗi sandbox/team.
 
 Không đổi tunnel từ 127.0.0.1 sang 0.0.0.0 chỉ để container truy cập mà chưa cấu
 hình giới hạn mạng. Việc nối worker Docker cần quyết định theo máy host/mạng thực tế.

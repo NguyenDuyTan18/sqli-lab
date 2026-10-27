@@ -2,9 +2,19 @@
 
 Thời lượng dự kiến 30–45 phút; cần biết HTTP, cookie và SELECT/UNION cơ bản.
 
-Bạn được cung cấp một cửa hàng demo ở `http://10.20.10.10:8080/` trong sandbox.
-Giảng viên cung cấp đường truy cập/tunnel thực tế nếu máy bạn không có route
-tới IP này. Tài khoản được tự đăng ký, không cần mật khẩu có sẵn.
+Một sandbox có bốn dịch vụ SQLi độc lập, mỗi đội một máy và database riêng:
+
+| Máy đội | URL |
+| --- | --- |
+| attacker1 | `http://10.20.10.11:8080/` |
+| attacker2 | `http://10.20.10.12:8080/` |
+| attacker3 | `http://10.20.10.13:8080/` |
+| attacker4 | `http://10.20.10.14:8080/` |
+
+Dùng endpoint đội được giảng viên chỉ định. Nếu máy bạn không có route tới mạng
+sandbox, giảng viên cung cấp tunnel. Tài khoản ứng dụng được tự đăng ký.
+Để sửa source trên máy đội, đăng nhập bằng SSH key do CyberRange cấp với user
+`user-access`.
 
 API:
 

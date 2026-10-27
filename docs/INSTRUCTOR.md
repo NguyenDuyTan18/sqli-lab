@@ -1,6 +1,6 @@
 # Giảng viên: nội dung và đáp án
 
-Ứng dụng dùng SQLite chung cho bảng products, users, sessions, notes. Chỉ một
+Mỗi VM đội dùng một SQLite riêng cho bảng products, users, sessions, notes. Chỉ một
 điểm cố ý dễ bị SQL injection là truy vấn `/search`; đăng nhập và ghi/đọc note
 thông thường dùng parameter binding. Mật khẩu được hash có salt.
 
@@ -43,7 +43,7 @@ py provisioning/files/app.py --db runtime/local-lab.db --fixed
 
 Trên sandbox, giảng viên có thể đặt `sqli_search_fixed: true` trong
 `provisioning/group_vars/all.yml` và chạy lại provisioning, hoặc để học viên sửa
-mã trên VM và restart `sqli-web`. Đổi repository revision cần được áp dụng theo
+mã trên máy đội và restart `sqli-web`. Đổi repository revision cần được áp dụng theo
 quy trình pool/sandbox của instance; chỉ push Git không tự cập nhật VM đang chạy.
 Không xóa file DB khi đổi sang chế độ fixed.
 

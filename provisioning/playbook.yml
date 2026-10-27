@@ -1,15 +1,36 @@
 ---
-- name: Install the SQL injection service
-  hosts: sqli-web
+- name: Install each team's SQL injection service and student access
+  hosts: attackers
   become: true
-  tasks:
+  gather_facts: true
+  vars:
+    user_access_username: user-access
+    user_access_password: '{{ lab_generated_login_password }}'
+    user_access_shell: /bin/bash
+    user_access_sudo: false
+    user_access_ssh_public_key: '{{ global_ssh_public_user_key }}'
+  pre_tasks:
+    - name: Generate a per-VM student account password
+      ansible.builtin.set_fact:
+        lab_generated_login_password: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=24) }}"
+      no_log: true
+
+    - name: Require the platform-provided student SSH key
+      ansible.builtin.assert:
+        that:
+          - global_ssh_public_user_key is defined
+          - global_ssh_public_user_key | length > 0
+
     - name: Install Python runtime
       ansible.builtin.apt:
         name: python3
         state: present
         update_cache: true
         cache_valid_time: 3600
-
+  roles:
+    - role: user-access
+      no_log: true
+  tasks:
     - name: Create isolated service account
       ansible.builtin.user:
         name: sqli-web
@@ -52,6 +73,27 @@
         enabled: true
         state: started
 
+    - name: Write the assigned SQLi service URL for the trainee
+      ansible.builtin.copy:
+        dest: /home/user-access/lab-addresses.txt
+        owner: user-access
+        group: user-access
+        mode: '0600'
+        content: |
+          Assigned SQL injection service:
+          http://{{ sqli_checker_targets[inventory_hostname] }}/
+          Service ID: {{ inventory_hostname }}
+          Use the platform-issued SSH key to log in as user-access.
+
+    - name: Verify the local team service health
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/health
+        use_proxy: false
+        return_content: true
+      register: team_local_health
+      until: team_local_health.status | default(0) == 200
+      retries: 10
+      delay: 3
   handlers:
     - name: Restart web
       ansible.builtin.systemd_service:
