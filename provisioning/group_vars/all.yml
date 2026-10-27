@@ -1,0 +1,6 @@
+# The external controller selects an action and service IDs. The checker VM
+# resolves IDs through this allow-list; add one entry for each team's service.
+sqli_checker_targets:
+  sqli-web: "{{ hostvars['sqli-web'].user_network_ip | default('10.20.10.10') }}:8080"
+sqli_checker_keep: 5
+sqli_search_fixed: false

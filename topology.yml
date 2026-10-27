@@ -1,0 +1,48 @@
+name: sqli-training-lab
+
+# Replace image/flavor names with existing CyberRange-compatible OpenStack values.
+hosts:
+  - name: sqli-web
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
+
+  - name: checker
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
+    hidden: true
+
+routers:
+  - name: lab-router
+    base_box:
+      image: ubuntu-22.04
+      mgmt_user: ubuntu
+    flavor: standard.small
+
+networks:
+  - name: service-net
+    cidr: 10.20.10.0/24
+    accessible_by_user: true
+  - name: checker-net
+    cidr: 10.20.20.0/24
+    accessible_by_user: false
+    hidden: true
+
+net_mappings:
+  - host: sqli-web
+    network: service-net
+    ip: 10.20.10.10
+  - host: checker
+    network: checker-net
+    ip: 10.20.20.10
+
+router_mappings:
+  - router: lab-router
+    network: service-net
+    ip: 10.20.10.1
+  - router: lab-router
+    network: checker-net
+    ip: 10.20.20.1

@@ -1,0 +1,19 @@
+# Merge task into ForcAD config.yml. Set game.start_time before setup.
+game:
+  mode: classic
+  start_time: 2026-10-28 10:00:00
+  timezone: Asia/Bangkok
+  round_time: 60
+  flag_lifetime: 5
+tasks:
+  - name: sqli_shop
+    checker: sqli_shop/checker.py
+    checker_type: pfr
+    checker_timeout: 15
+    puts: 1
+    gets: 1
+    places: 1
+teams:
+  # Direct routed access only; Docker must be able to reach this address.
+  - name: Team 1
+    ip: 10.20.10.10

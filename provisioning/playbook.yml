@@ -1,0 +1,160 @@
+---
+- name: Install the SQL injection service
+  hosts: sqli-web
+  become: true
+  tasks:
+    - name: Install Python runtime
+      ansible.builtin.apt:
+        name: python3
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create isolated service account
+      ansible.builtin.user:
+        name: sqli-web
+        system: true
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Create program directory
+      ansible.builtin.file:
+        path: /opt/sqli-lab
+        state: directory
+        mode: '0755'
+
+    - name: Create private database directory
+      ansible.builtin.file:
+        path: /var/lib/sqli-lab
+        state: directory
+        owner: sqli-web
+        group: sqli-web
+        mode: '0700'
+
+    - name: Install training application
+      ansible.builtin.copy:
+        src: app.py
+        dest: /opt/sqli-lab/app.py
+        mode: '0755'
+      notify: Restart web
+
+    - name: Install application service
+      ansible.builtin.template:
+        src: sqli-web.service.j2
+        dest: /etc/systemd/system/sqli-web.service
+        mode: '0644'
+      notify: Restart web
+
+    - name: Start application
+      ansible.builtin.systemd_service:
+        name: sqli-web
+        daemon_reload: true
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart web
+      ansible.builtin.systemd_service:
+        name: sqli-web
+        daemon_reload: true
+        state: restarted
+
+- name: Install the checker VM
+  hosts: checker
+  become: true
+  tasks:
+    - name: Check for a checker daemon from earlier lab versions
+      ansible.builtin.stat:
+        path: /etc/systemd/system/sqli-checker.service
+      register: legacy_checker_unit
+
+    - name: Stop the old self-scheduled checker daemon
+      ansible.builtin.systemd_service:
+        name: sqli-checker
+        enabled: false
+        state: stopped
+      when: legacy_checker_unit.stat.exists
+
+    - name: Remove the old checker daemon unit
+      ansible.builtin.file:
+        path: /etc/systemd/system/sqli-checker.service
+        state: absent
+      when: legacy_checker_unit.stat.exists
+
+    - name: Reload systemd after removing the old checker daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      when: legacy_checker_unit.stat.exists
+
+    - name: Install Python runtime
+      ansible.builtin.apt:
+        name: python3
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create checker service account
+      ansible.builtin.user:
+        name: sqli-checker
+        system: true
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Create program directory
+      ansible.builtin.file:
+        path: /opt/sqli-checker
+        state: directory
+        mode: '0755'
+
+    - name: Create private state directory
+      ansible.builtin.file:
+        path: /var/lib/sqli-checker
+        state: directory
+        owner: sqli-checker
+        group: sqli-checker
+        mode: '0700'
+
+    - name: Create per-service checker state directory
+      ansible.builtin.file:
+        path: /var/lib/sqli-checker/targets
+        state: directory
+        owner: sqli-checker
+        group: sqli-checker
+        mode: '0700'
+
+    - name: Install checker programs
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/opt/sqli-checker/{{ item }}"
+        mode: '0755'
+      loop:
+        - checker.py
+        - monitor.py
+        - remote_runner.py
+        - run-command
+
+    - name: Create checker target configuration directory
+      ansible.builtin.file:
+        path: /etc/sqli-checker
+        state: directory
+        owner: root
+        group: sqli-checker
+        mode: '0750'
+
+    - name: Install allow-listed service targets
+      ansible.builtin.template:
+        src: checker-targets.json.j2
+        dest: /etc/sqli-checker/targets.json
+        owner: root
+        group: sqli-checker
+        mode: '0640'
+
+    - name: Allow management user to run only the checker command
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/sqli-checker
+        content: "{{ ansible_user | default('ubuntu') }} ALL=(sqli-checker) NOPASSWD: /opt/sqli-checker/run-command \"\"\n"
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+

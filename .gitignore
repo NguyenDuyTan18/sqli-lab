@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+runtime/
+*.key
+*.pem
+ssh-access*
+*management-config
+*management-key*
+*user-config
+*user-key*
+.coverage*
+coverage/
+.venv/
+*.zip
