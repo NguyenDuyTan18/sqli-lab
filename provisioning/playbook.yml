@@ -24,7 +24,7 @@
         content: '{{ dict(sandbox_uuid=global_sandbox_id, node=inventory_hostname) | to_nice_json }}'
 
 - name: Run ServiceDesk on the server VM
-  hosts: server
+  hosts: server:checker
   become: true
   gather_facts: true
   tasks:
@@ -382,8 +382,8 @@
       delay: 3
 
     - name: Run the internal checker after provisioning
-      ansible.builtin.command: /usr/bin/python3 /opt/idor-free-lab/sqli-checker.py
-      become_user: user-access
+      ansible.builtin.command:
+        argv: [runuser, -u, user-access, --, /usr/bin/python3, /opt/idor-free-lab/sqli-checker.py]
       register: sqli_checker_initial
       changed_when: false
       failed_when: >-
