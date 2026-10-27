@@ -3,6 +3,7 @@
   hosts: hosts
   become: true
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     - name: Generate a unique ServiceDesk password for this VM
       ansible.builtin.set_fact:
@@ -15,6 +16,21 @@
           - global_sandbox_id is defined
           - global_sandbox_id | length == 36
           - inventory_hostname in lab_hosts
+    - name: Inspect IPv4 addresses before applying lab network configuration
+      ansible.builtin.command:
+        argv: [ip, -4, -o, addr, show]
+      register: lab_local_ipv4
+      changed_when: false
+
+    - name: Require the expected lab IP on each host
+      ansible.builtin.assert:
+        that:
+          - lab_hosts[inventory_hostname] in (lab_local_ipv4.stdout | regex_findall('inet ([0-9.]+)/'))
+        fail_msg: >-
+          Host {{ inventory_hostname }} is missing expected lab IP {{ lab_hosts[inventory_hostname] }}.
+          Actual IPv4 addresses: {{ lab_local_ipv4.stdout | regex_findall('inet ([0-9.]+)/') | join(', ') }}.
+          Use the topology matching this playbook or update the network configuration consistently.
+
     - name: Store sandbox and host identity
       ansible.builtin.copy:
         dest: /etc/idor-lab-identity.json
@@ -417,6 +433,7 @@
   hosts: hosts
   become: true
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     - name: Ping every attacker peer directly on the LAN
       ansible.builtin.command:
