@@ -40,10 +40,10 @@ một sandbox tại một thời điểm.
 
 ## 1. Chuẩn bị image và đưa lên GitHub
 
-Trong `topology.yml`, image đã đặt là `ubuntu-22.04`, có trong danh sách Images
-bạn cung cấp. Xác nhận `mgmt_user: ubuntu` đúng với image đó và thay `flavor:
-standard.small` bằng flavor tồn tại trên OpenStack của bạn. Tất cả image phải có
-cloud-init, SSH và sudo; router cũng phải tương thích preconfig của hệ thống.
+Trong `topology.yml`, các máy đội/checker dùng `ubuntu-22.04` và router dùng
+`debian-12-x86_64`, đều có trong danh sách Images bạn cung cấp. Xác nhận
+`mgmt_user` khớp với từng image và thay `flavor: standard.small` nếu flavor đó
+không tồn tại. Các image phải có cloud-init, SSH và sudo.
 Cần truy cập APT hoặc mirror nội bộ khi provisioning cài Python.
 
 Mạng mặc định: `10.20.10.0/24` và `10.20.20.0/24`. Nếu đổi, sửa topology,
