@@ -1,9 +1,0 @@
-#!/bin/sh
-set -eu
-
-if [ "$#" -ne 0 ]; then
-    echo 'This command accepts its request through standard input.' >&2
-    exit 2
-fi
-
-exec /usr/bin/python3 /opt/sqli-checker/remote_runner.py

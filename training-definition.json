@@ -1,27 +1,28 @@
 {
-  "title": "SQL Injection Lab — Four Teams, One Sandbox",
-  "description": "A single CyberRangeCZ sandbox with four independent SQL injection training services and one internal checker.",
-  "prerequisites": ["Basic HTTP", "Basic SQL SELECT queries"],
+  "title": "SQL Injection Lab — Four Attackers and One Server",
+  "description": "One sandbox with four Kali attacker VMs and one ServiceDesk server on a shared LAN.",
+  "prerequisites": [
+    "Basic HTTP",
+    "Basic Linux commands"
+  ],
   "outcomes": [
-    "Access the SQLi service assigned to your team",
-    "Reproduce a UNION-based SQL injection",
-    "Fix the vulnerable query with parameterized SQL",
-    "Keep normal service behavior and checker integrity working"
+    "Reach the lab hosts",
+    "Explore SQL injection in the ServiceDesk search"
   ],
   "state": "UNRELEASED",
   "show_stepper_bar": false,
-  "estimated_duration": 45,
+  "estimated_duration": 60,
   "variant_sandboxes": false,
   "levels": [
     {
-      "title": "Four-team SQLi sandbox",
+      "title": "Five-host SQL Injection Lab",
       "level_type": "ACCESS_LEVEL",
       "order": 0,
-      "estimated_duration": 45,
+      "estimated_duration": 60,
       "minimal_possible_solve_time": null,
       "passkey": "finish-sqli-lab",
-      "cloud_content": "# Range Shop SQL injection lab\n\nThis Training Instance contains four independent team services in one sandbox. Open the service assigned by your instructor:\n\n- attacker1: http://10.20.10.11:8080/\n- attacker2: http://10.20.10.12:8080/\n- attacker3: http://10.20.10.13:8080/\n- attacker4: http://10.20.10.14:8080/\n\nEach service has its own database. Use the platform-issued SSH key and the `user-access` account to inspect and patch your assigned VM. The internal checker checks each team service independently. Complete the exercise and submit `finish-sqli-lab` when instructed by your instructor.",
-      "local_content": "This lab runs as one CyberRangeCZ sandbox with four team services and an internal checker. Open the assigned Training Instance."
+      "cloud_content": "# One sandbox, four team ServiceDesk instances\n\nOpen the topology console for your assigned attacker VM. Linux login: `user-access / ClientLab-Only-2026!`. Each attacker VM hosts a separate ServiceDesk instance on port 8080, with its own database: attacker1 `http://10.80.0.11:8080/`, attacker2 `http://10.80.0.12:8080/`, attacker3 `http://10.80.0.13:8080/`, attacker4 `http://10.80.0.14:8080/`. From the school LAN through the Windows gateway, use ports 8011, 8012, 8013, and 8014 respectively on `10.13.145.42`. Login username is `alice`; find your generated password in `~/lab-addresses.txt` on your assigned VM. The Kali identity pages remain on port 80. The shared ServiceDesk server at `10.80.0.20` remains isolated from attacker VMs. Keep this level open during the lab. Enter `finish-sqli-lab` only when done. Search inside ServiceDesk is the SQL injection exercise.",
+      "local_content": "This lab is designed for a CyberRangeCZ cloud sandbox. Open its assigned Training Instance."
     }
   ]
 }

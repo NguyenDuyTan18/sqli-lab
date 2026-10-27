@@ -1,35 +1,34 @@
-name: sqli-single-sandbox-four-teams
+name: idor-single-sandbox-five-hosts
 
 hosts:
   - name: attacker1
     base_box:
-      image: debian-12-x86_64
+      image: kali
       mgmt_user: debian
-    flavor: standard.small
+    flavor: standard.kali
   - name: attacker2
     base_box:
-      image: debian-12-x86_64
+      image: kali
       mgmt_user: debian
-    flavor: standard.small
+    flavor: standard.kali
   - name: attacker3
     base_box:
-      image: debian-12-x86_64
+      image: kali
       mgmt_user: debian
-    flavor: standard.small
+    flavor: standard.kali
   - name: attacker4
     base_box:
-      image: debian-12-x86_64
+      image: kali
       mgmt_user: debian
-    flavor: standard.small
-  - name: checker
+    flavor: standard.kali
+  - name: server
     base_box:
       image: debian-12-x86_64
       mgmt_user: debian
     flavor: standard.small
-    hidden: true
 
 routers:
-  - name: lab-router
+  - name: gateway
     base_box:
       image: debian-12-x86_64
       mgmt_user: debian
@@ -40,38 +39,31 @@ wan:
   cidr: 100.100.100.0/24
 
 networks:
-  - name: service-net
-    cidr: 10.20.10.0/24
+  - name: lab-lan
+    cidr: 10.80.0.0/24
     accessible_by_user: true
-  - name: checker-net
-    cidr: 10.20.20.0/24
-    accessible_by_user: false
-    hidden: true
 
 net_mappings:
   - host: attacker1
-    network: service-net
-    ip: 10.20.10.11
+    network: lab-lan
+    ip: 10.80.0.11
   - host: attacker2
-    network: service-net
-    ip: 10.20.10.12
+    network: lab-lan
+    ip: 10.80.0.12
   - host: attacker3
-    network: service-net
-    ip: 10.20.10.13
+    network: lab-lan
+    ip: 10.80.0.13
   - host: attacker4
-    network: service-net
-    ip: 10.20.10.14
-  - host: checker
-    network: checker-net
-    ip: 10.20.20.10
+    network: lab-lan
+    ip: 10.80.0.14
+  - host: server
+    network: lab-lan
+    ip: 10.80.0.20
 
 router_mappings:
-  - router: lab-router
-    network: service-net
-    ip: 10.20.10.1
-  - router: lab-router
-    network: checker-net
-    ip: 10.20.20.1
+  - router: gateway
+    network: lab-lan
+    ip: 10.80.0.1
 
 groups:
   - name: attackers

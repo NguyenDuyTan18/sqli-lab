@@ -1,4 +1,3 @@
----
 roles:
   - name: user-access
     src: https://github.com/cyberrangecz/ansible-role-user-access.git

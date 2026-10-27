@@ -1,9 +1,14 @@
-# The external controller selects an action and service IDs. The checker VM
-# resolves IDs through this allow-list; add one entry for each team's service.
-sqli_checker_targets:
-  attacker1: "{{ hostvars['attacker1'].user_network_ip | default('10.20.10.11') }}:8080"
-  attacker2: "{{ hostvars['attacker2'].user_network_ip | default('10.20.10.12') }}:8080"
-  attacker3: "{{ hostvars['attacker3'].user_network_ip | default('10.20.10.13') }}:8080"
-  attacker4: "{{ hostvars['attacker4'].user_network_ip | default('10.20.10.14') }}:8080"
-sqli_checker_keep: 5
-sqli_search_fixed: false
+# Lab-only credentials. Replace before use outside an isolated training cloud.
+lab_console_password: ClientLab-Only-2026!
+lab_enforce_owner: false
+lab_hosts:
+  attacker1: 10.80.0.11
+  attacker2: 10.80.0.12
+  attacker3: 10.80.0.13
+  attacker4: 10.80.0.14
+  server: 10.80.0.20
+lab_attackers:
+  attacker1: 10.80.0.11
+  attacker2: 10.80.0.12
+  attacker3: 10.80.0.13
+  attacker4: 10.80.0.14
