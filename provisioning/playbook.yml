@@ -194,7 +194,7 @@
     - name: Allow management user to run only the checker command
       ansible.builtin.copy:
         dest: /etc/sudoers.d/sqli-checker
-        content: "{{ ansible_user | default('ubuntu') }} ALL=(sqli-checker) NOPASSWD: /opt/sqli-checker/run-command \"\"\n"
+        content: "{{ ansible_user | default('debian') }} ALL=(sqli-checker) NOPASSWD: /opt/sqli-checker/run-command \"\"\n"
         owner: root
         group: root
         mode: '0440'

@@ -40,11 +40,17 @@ một sandbox tại một thời điểm.
 
 ## 1. Chuẩn bị image và đưa lên GitHub
 
-Trong `topology.yml`, các máy đội/checker dùng `ubuntu-22.04` và router dùng
-`debian-12-x86_64`, đều có trong danh sách Images bạn cung cấp. Xác nhận
+Trong `topology.yml`, các máy đội, checker và router đều dùng
+`debian-12-x86_64` với `mgmt_user: debian`, cùng image Debian trong bài mẫu.
+Image này phải có metadata `os_type=linux` trên OpenStack. Xác nhận
 `mgmt_user` khớp với từng image và thay `flavor: standard.small` nếu flavor đó
 không tồn tại. Các image phải có cloud-init, SSH và sudo.
 Cần truy cập APT hoặc mirror nội bộ khi provisioning cài Python.
+
+Nếu portal báo `Expected 'linux' | 'windows', received null`, xem
+[cách sửa metadata image và xử lý sandbox hiện tại](docs/TOPOLOGY-OS-TYPE.md).
+Đổi image trong source áp dụng khi cấp phát sandbox mới; sandbox đang chạy
+vẫn dùng image cũ và cần sửa metadata của image đó.
 
 Mạng mặc định: `10.20.10.0/24` và `10.20.20.0/24`. Nếu đổi, sửa topology,
 `sqli_checker_targets` trong `provisioning/group_vars/all.yml`, và các URL trong
