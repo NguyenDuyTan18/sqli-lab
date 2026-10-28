@@ -53,6 +53,15 @@ class PortalTests(unittest.TestCase):
         self.assertEqual([t['id'] for t in tickets], [1201])
         self.assertEqual(tickets[0]['owner'], 'alice')
 
+    def test_read_and_write_idor(self):
+        cookie = self.login()
+        other = self.request('/api/tickets/1401', cookie=cookie)
+        self.assertEqual(other['status'], 200)
+        self.assertEqual(json.loads(other['body'])['owner'], 'bob')
+        update = self.request('/api/tickets/1401', 'POST', {'status': 'closed'}, cookie)
+        self.assertEqual(update['status'], 200)
+        self.assertEqual(json.loads(self.request('/api/tickets/1401', cookie=cookie)['body'])['status'], 'closed')
+
     def test_owner_check_protects_read_and_write(self):
         fixed = self.module.create_app(Path(self.temp.name) / 'fixed.sqlite', 'lab-password', 'fixed', True)
         cookie = self.login(fixed)
@@ -64,9 +73,9 @@ class PortalTests(unittest.TestCase):
         second = self.module.create_app(Path(self.temp.name) / 'b.sqlite', 'lab-password', 'sandbox-B')
         cookie_a = self.login()
         self.assertEqual(self.request('/api/tickets', cookie=cookie_a, app=second)['status'], 401)
-        self.request('/api/tickets/1201', 'POST', {'status': 'closed'}, cookie_a)
+        self.request('/api/tickets/1401', 'POST', {'status': 'closed'}, cookie_a)
         cookie_b = self.login(second)
-        b = json.loads(self.request('/api/tickets/1201', cookie=cookie_b, app=second)['body'])
+        b = json.loads(self.request('/api/tickets/1401', cookie=cookie_b, app=second)['body'])
         self.assertEqual(b['status'], 'open')
         self.assertIn('sandbox-B', b['private_note'])
 
@@ -137,10 +146,10 @@ class PortalTests(unittest.TestCase):
                 login = Request(url + '/login', data=urlencode({'username': 'alice', 'password': 'lab-password'}).encode())
                 with client.open(login, timeout=5) as response:
                     self.assertEqual(json.load(response)['user'], 'alice')
-            write = Request(urls[0] + '/api/tickets/1201', data=b'status=closed')
+            write = Request(urls[0] + '/api/tickets/1401', data=b'status=closed')
             with clients[0].open(write, timeout=5) as response:
                 self.assertEqual(json.load(response)['status'], 'closed')
-            with clients[1].open(urls[1] + '/api/tickets/1201', timeout=5) as response:
+            with clients[1].open(urls[1] + '/api/tickets/1401', timeout=5) as response:
                 ticket_b = json.load(response)
                 self.assertEqual(ticket_b['status'], 'open')
                 self.assertIn('sandbox-B', ticket_b['private_note'])
@@ -156,13 +165,13 @@ class DefinitionTests(unittest.TestCase):
         self.assertEqual(len(definition['levels']), 1)
         level = definition['levels'][0]
         self.assertEqual(level['level_type'], 'ACCESS_LEVEL')
-        self.assertEqual(level['title'], 'Five-host SQL Injection Lab')
-        self.assertEqual(level['passkey'], 'finish-sqli-lab')
-        self.assertIn('finish-sqli-lab', level['cloud_content'])
+        self.assertEqual(level['title'], 'Five-host IDOR Lab')
+        self.assertEqual(level['passkey'], 'finish-idor-lab')
+        self.assertIn('finish-idor-lab', level['cloud_content'])
         for address in ['10.80.0.11', '10.80.0.12', '10.80.0.13', '10.80.0.14']:
-            self.assertIn('http://' + address + ':8080/', level['cloud_content'])
+            self.assertIn('http://' + address + '/', level['cloud_content'])
         self.assertIn('10.80.0.20', level['cloud_content'])
-        self.assertIn('isolated', level['cloud_content'])
+        self.assertIn('blocked', level['cloud_content'])
         self.assertTrue(level['local_content'].strip())
         for key in ['answer', 'answer_variable_name', 'questions', 'max_score', 'content']:
             self.assertNotIn(key, level)
@@ -172,15 +181,15 @@ class DefinitionTests(unittest.TestCase):
         self.assertTrue(source.exists(), 'Isolated lab topology is required')
         topology = yaml.safe_load(source.read_text(encoding='utf-8'))
         self.assertEqual({h['name'] for h in topology['hosts']},
-                         {'attacker1', 'attacker2', 'attacker3', 'attacker4', 'server'})
+                         {'attacker1', 'attacker2', 'attacker3', 'attacker4', 'server', 'checker'})
         self.assertEqual(len(topology['networks']), 1)
         self.assertEqual(len(topology['routers']), 1)
-        self.assertEqual(len(topology['net_mappings']), 5)
+        self.assertEqual(len(topology['net_mappings']), 6)
         self.assertEqual(topology['groups'], [
             {'name': 'attackers', 'nodes': ['attacker1', 'attacker2', 'attacker3', 'attacker4']}
         ])
         self.assertEqual({m['ip'] for m in topology['net_mappings']},
-                         {'10.80.0.11', '10.80.0.12', '10.80.0.13', '10.80.0.14', '10.80.0.20'})
+                         {'10.80.0.11', '10.80.0.12', '10.80.0.13', '10.80.0.14', '10.80.0.20', '10.80.0.30'})
         self.assertEqual(topology['router_mappings'][0]['ip'], '10.80.0.1')
         self.assertFalse((ROOT / 'interconnect').exists())
         self.assertFalse((ROOT / 'variables.yml').exists())

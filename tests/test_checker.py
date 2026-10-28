@@ -1,40 +1,88 @@
-import importlib.util, json, tempfile, threading, unittest
+﻿import importlib.util
+import json
+from contextlib import closing
 from pathlib import Path
+import threading
+import sqlite3
+import tempfile
+import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
-from wsgiref.simple_server import make_server, WSGIRequestHandler
+
 ROOT = Path(__file__).resolve().parents[1]
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
-portal = load('portal_check', 'app/portal.py')
-checker = load('internal_check', 'checker/internal.py')
-external = load('external_check', 'checker/external.py')
-class Quiet(WSGIRequestHandler):
-    def log_message(self, *args): pass
+spec = importlib.util.spec_from_file_location('web_health', ROOT / 'checker/web_health.py')
+checker = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(checker)
+
+
 class CheckerTests(unittest.TestCase):
-    def test_real_service_and_failed_authentication(self):
-        with tempfile.TemporaryDirectory() as temp:
-            app = portal.create_app(Path(temp) / 'db', 'secret', 'team')
-            with make_server('127.0.0.1', 0, app, handler_class=Quiet) as server:
-                thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
-                try:
-                    url = 'http://127.0.0.1:' + str(server.server_port)
-                    self.assertEqual(checker.check(url, 'secret', 'team'), {'identity':'team','service':'up','authentication':'ok','sqli':'vulnerable'})
-                    self.assertEqual(checker.check(url, 'wrong', 'team')['authentication'], 'failed')
-                    self.assertEqual(checker.check(url, 'secret', 'other')['service'], 'identity_mismatch')
-                finally:
-                    server.shutdown(); thread.join()
-    def test_external_uses_strict_host_keys_and_passes_through_json(self):
-        from types import SimpleNamespace
-        with patch('sys.argv', ['external.py', '--host', '10.80.0.11', '--key', '/key', '--known-hosts', '/known']), patch.object(external.subprocess, 'run', return_value=SimpleNamespace(stdout='{"service":"up"}', returncode=0)) as run:
-            self.assertEqual(external.main(), 0)
-            cmd = run.call_args.args[0]
-            self.assertIn('StrictHostKeyChecking=yes', cmd)
-            self.assertIn('user-access@10.80.0.11', cmd)
-    def test_provisioning_installs_checker_and_protects_password(self):
-        import yaml
-        plays = yaml.safe_load((ROOT / 'provisioning/playbook.yml').read_text(encoding='utf-8'))
-        tasks = [t for play in plays for t in play.get('tasks', [])]
-        config = next(t for t in tasks if t.get('name') == 'Configure the internal checker for this team')
-        self.assertEqual(config['ansible.builtin.copy']['mode'], '0600')
-        self.assertTrue(config['no_log'])
+    def test_history_persists_cycles_and_rolls_back_partial_cycle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / 'results.sqlite3'
+            results = [dict(name=f'team0{i}', url=f'http://10.80.0.{10+i}/health',
+                            status='UP' if i != 2 else 'DOWN', elapsed_ms=10, detail='test')
+                       for i in range(1, 5)]
+            first = checker.save_results(db, '2026-10-27T01:00:00+00:00', results)
+            second = checker.save_results(db, '2026-10-27T01:01:00+00:00', results)
+            self.assertGreater(second, first)
+            with self.assertRaises(sqlite3.IntegrityError):
+                checker.save_results(db, 'invalid-cycle', [results[0], results[0]])
+            with closing(sqlite3.connect(db)) as connection:
+                self.assertEqual(connection.execute('SELECT COUNT(*) FROM check_cycles').fetchone()[0], 2)
+                self.assertEqual(connection.execute('SELECT COUNT(*) FROM check_results').fetchone()[0], 8)
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM check_results WHERE status='DOWN'").fetchone()[0], 2)
+
+    def test_health_failures_and_recovery_over_http(self):
+        class Handler(BaseHTTPRequestHandler):
+            payload = b'{"status":"ok","node":"attacker1"}'
+            code = 200
+
+            def do_GET(self):
+                self.send_response(self.code)
+                self.end_headers()
+                self.wfile.write(self.payload)
+
+            def log_message(self, *args):
+                pass
+
+        with ThreadingHTTPServer(('127.0.0.1', 0), Handler) as server:
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            target = {'name': 'team01', 'url': f'http://127.0.0.1:{server.server_port}/health',
+                      'expected_node': 'attacker1'}
+            try:
+                self.assertEqual(checker.check_web(target, 1)['status'], 'UP')
+                for payload, code in [(b'not json', 200), (b'{"status":"down"}', 200),
+                                      (b'{"status":"ok","node":"attacker2"}', 200),
+                                      (b'x' * 65537, 200), (b'{}', 503), (b'{}', 302)]:
+                    Handler.payload, Handler.code = payload, code
+                    self.assertEqual(checker.check_web(target, 1)['status'], 'DOWN')
+                Handler.payload = b'{"status":"ok","node":"attacker1"}'
+                Handler.code = 200
+                self.assertEqual(checker.check_web(target, 1)['status'], 'UP')
+            finally:
+                server.shutdown()
+                thread.join(3)
+        self.assertEqual(checker.check_web(target, 0.1)['status'], 'DOWN')
+
+    def test_round_interval_includes_check_duration(self):
+        config = ROOT / 'checker/web_targets.json'
+        with patch('sys.argv', ['web_health.py', '--config', str(config), '--interval', '30', '--json']), \
+             patch.object(checker, 'check_web', return_value={'status': 'DOWN'}), \
+             patch.object(checker.time, 'monotonic', side_effect=[100, 103]), \
+             patch.object(checker.time, 'sleep', side_effect=KeyboardInterrupt) as sleep, \
+             patch('builtins.print'):
+            self.assertEqual(checker.main(), 130)
+            sleep.assert_called_once_with(27)
+
+    def test_one_shot_exit_code(self):
+        config = ROOT / 'checker/web_targets.json'
+        for status, expected in [('UP', 0), ('DOWN', 1)]:
+            with patch('sys.argv', ['web_health.py', '--config', str(config), '--json']), \
+                 patch.object(checker, 'check_web', return_value={'status': status}), \
+                 patch('builtins.print'):
+                self.assertEqual(checker.main(), expected)
+
+
+if __name__ == '__main__':
+    unittest.main()
